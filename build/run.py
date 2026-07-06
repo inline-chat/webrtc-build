@@ -254,6 +254,10 @@ PATCHES = {
         'add_license_dav1d.patch',
         'fix_mocks.patch',
     ],
+    'ubuntu-24.04_x86_64': [
+        'add_license_dav1d.patch',
+        'fix_mocks.patch',
+    ],
 }
 
 
@@ -729,7 +733,7 @@ def build_webrtc(
                     'arm_use_neon=false',
                     'enable_libaom=false',
                 ]
-        elif target in ('ubuntu-18.04_x86_64', 'ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64'):
+        elif target in ('ubuntu-18.04_x86_64', 'ubuntu-20.04_x86_64', 'ubuntu-22.04_x86_64', 'ubuntu-24.04_x86_64'):
             gn_args += [
                 'target_os="linux"',
                 'rtc_use_pipewire=false',
@@ -958,6 +962,7 @@ TARGETS = [
     'ubuntu-18.04_x86_64',
     'ubuntu-20.04_x86_64',
     'ubuntu-22.04_x86_64',
+    'ubuntu-24.04_x86_64',
     'ubuntu-18.04_armv8',
     'ubuntu-20.04_armv8',
     'raspberry-pi-os_armv6',
@@ -1016,6 +1021,8 @@ def check_target(target):
         if target == 'ubuntu-20.04_x86_64' and osver == '20.04':
             return True
         if target == 'ubuntu-22.04_x86_64' and osver == '22.04':
+            return True
+        if target == 'ubuntu-24.04_x86_64' and osver == '24.04':
             return True
 
         return False
