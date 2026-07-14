@@ -44,6 +44,8 @@ jobs:
           df -h
       - name: Install dependencies
         run: sudo ./scripts/apt_install_x86_64.sh
+      - name: Install test dependencies
+        run: sudo ./scripts/apt_install_test_deps.sh
       - name: Build and run unittests
         env:
           COMMIT_HASH: ${{ github.event.inputs.commitHash }}
