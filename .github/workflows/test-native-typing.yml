@@ -1,0 +1,45 @@
+name: test native typing suppression
+
+on:
+  workflow_dispatch:
+    inputs:
+      commitHash:
+        description: "inline-chat/webrtc commit hash"
+        default: ""
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-macos:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: ./build
+    steps:
+    - uses: actions/checkout@v5
+    - name: Select Xcode 26.0
+      run: sudo xcode-select --switch /Applications/Xcode_26.0.app/Contents/Developer
+    - name: Fetch matching WebRTC source
+      run: python3 run.py build apple_prefixed --commit "${{ github.event.inputs.commitHash }}" --webrtc-fetch
+    - name: Build and run native typing suppression tests
+      run: |
+        export PATH="$PWD/_source/apple_prefixed/depot_tools:$PATH"
+        source_dir="$PWD/_source/apple_prefixed/webrtc/src"
+        out_dir="$PWD/_package/apple_prefixed/transient-tests"
+        cd "$source_dir"
+        gn gen "$out_dir" --args='
+          is_component_build=false
+          is_debug=false
+          mac_deployment_target="10.15"
+          rtc_build_examples=false
+          rtc_enable_protobuf=false
+          rtc_include_tests=true
+          rtc_use_h264=false
+          target_cpu="arm64"
+          target_os="mac"
+          treat_warnings_as_errors=true
+          use_rtti=true'
+        ninja -C "$out_dir" transient_suppression_unittests_runner -j 6 --quiet
+        "$out_dir/transient_suppression_unittests_runner"
