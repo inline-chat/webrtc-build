@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       commitHash:
-        description: 'webrtc-sdk commit hash'
+        description: 'inline-chat/webrtc commit hash'
         default: ''
         required: true
       configuration:
