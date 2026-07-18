@@ -42,6 +42,9 @@ jobs:
         export PATH="$PWD/_source/apple_prefixed/depot_tools:$PATH"
         source_dir="$PWD/_source/apple_prefixed/webrtc/src"
         out_dir="$PWD/_package/apple_prefixed/transient-tests"
+        for manifest in "$source_dir"/resources/audio_processing/transient/*.sha1; do
+          test -f "${manifest%.sha1}"
+        done
         mkdir -p "$PWD/_package/resources/audio_processing"
         cp -R \
           "$source_dir/resources/audio_processing/transient" \
