@@ -10,6 +10,7 @@ import platform
 import argparse
 import collections
 import re
+import time
 from typing import Optional, Dict, List
 
 
@@ -49,6 +50,19 @@ def cmd(args, **kwargs):
     if resolve:
         args = [shutil.which(args[0]), *args[1:]]
     return subprocess.run(args, **kwargs)
+
+
+def cmd_retry(args, attempts=3, delay_seconds=15, **kwargs):
+    for attempt in range(1, attempts + 1):
+        try:
+            return cmd(args, **kwargs)
+        except subprocess.CalledProcessError:
+            if attempt == attempts:
+                raise
+            logging.warning(
+                'Command failed on attempt %d/%d; retrying in %d seconds',
+                attempt, attempts, delay_seconds)
+            time.sleep(delay_seconds)
 
 
 # 標準出力をキャプチャするコマンド実行。シェルの `cmd ...` や $(cmd ...) と同じ
@@ -302,7 +316,9 @@ def get_webrtc(source_dir, patch_dir, version, target,
             else:
                 cmd(['git', 'checkout', '-f', version])
             cmd(['git', 'clean', '-df'])
-            cmd(['gclient', 'sync', '-D', '--force', '--reset', '--with_branch_heads', '--jobs=8'])
+            cmd_retry(
+                ['gclient', 'sync', '-D', '--force', '--reset',
+                 '--with_branch_heads', '--jobs=8'])
             for patch in PATCHES[target]:
                 depth, dirs = PATCH_INFO.get(patch, (1, ['.']))
                 dir = os.path.join(src_dir, *dirs)
