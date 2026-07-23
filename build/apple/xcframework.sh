@@ -17,6 +17,7 @@ if [ -z "$PREFIX" ]; then
 else
   FRAMEWORK_NAME="${PREFIX}WebRTC"
 fi
+SYMBOL_PREFIX="${PREFIX}RTC"
 
 DEBUG="false"
 if [[ "$MODE" == "debug" ]]; then
@@ -59,6 +60,28 @@ require_header_text() {
     echo "error: $header_path does not declare required SDK API $text" >&2
     exit 1
   fi
+}
+
+validate_framework_sdk() {
+  local framework_path="$1"
+  local binary_path="$framework_path/$FRAMEWORK_NAME"
+  local headers_path="$framework_path/Headers"
+
+  require_exported_symbol "$binary_path" "_${SYMBOL_PREFIX}InitializeSSL"
+  require_exported_symbol "$binary_path" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}AudioDeviceModule"
+  require_exported_symbol "$binary_path" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}AudioSource"
+  require_exported_symbol "$binary_path" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}AudioProcessingState"
+  require_exported_symbol "$binary_path" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}PlatformAudioProcessingState"
+  require_exported_symbol "$binary_path" "_k${SYMBOL_PREFIX}AudioEngineInputMixerNodeKey"
+  require_header_text \
+    "$headers_path/RTCAudioDeviceModule.h" \
+    "RTCAudioEngineRuntimeDiagnostics"
+  require_header_text \
+    "$headers_path/RTCAudioDeviceModule.h" \
+    "audioEngineRuntimeDiagnostics"
+  require_header_text \
+    "$headers_path/RTCAudioProcessingState.h" \
+    "RTCAudioProcessingState"
 }
 
 COMMON_ARGS="
@@ -116,6 +139,7 @@ for platform_config in "${PLATFORMS[@]}"; do
   fi
   
   ninja -C "$OUT_DIR/$platform" "$build_target" -j $PARALLEL_BUILDS --quiet || exit 1
+  validate_framework_sdk "$OUT_DIR/$platform/$FRAMEWORK_NAME.framework"
   end_group
 done
 
@@ -129,24 +153,7 @@ if [ -d "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.dSYM" ]; then
   lipo -create -output "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME" "$OUT_DIR/macOS-arm64/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME" "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME"
 fi
 
-SYMBOL_PREFIX="${PREFIX}RTC"
-MACOS_FRAMEWORK_BINARY="$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.framework/$FRAMEWORK_NAME"
-MACOS_FRAMEWORK_HEADERS="$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.framework/Versions/Current/Headers"
-require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_${SYMBOL_PREFIX}InitializeSSL"
-require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}AudioDeviceModule"
-require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}AudioSource"
-require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}AudioProcessingState"
-require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}PlatformAudioProcessingState"
-require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_k${SYMBOL_PREFIX}AudioEngineInputMixerNodeKey"
-require_header_text \
-  "$MACOS_FRAMEWORK_HEADERS/RTCAudioDeviceModule.h" \
-  "RTCAudioEngineRuntimeDiagnostics"
-require_header_text \
-  "$MACOS_FRAMEWORK_HEADERS/RTCAudioDeviceModule.h" \
-  "audioEngineRuntimeDiagnostics"
-require_header_text \
-  "$MACOS_FRAMEWORK_HEADERS/RTCAudioProcessingState.h" \
-  "RTCAudioProcessingState"
+validate_framework_sdk "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.framework"
 
 mkdir -p "$OUT_DIR/catalyst-lib"
 cp -R "$OUT_DIR/catalyst-arm64/$FRAMEWORK_NAME.framework" "$OUT_DIR/catalyst-lib/$FRAMEWORK_NAME.framework"
