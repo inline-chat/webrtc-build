@@ -64,6 +64,41 @@ require_header_text() {
   fi
 }
 
+require_exact_archs() {
+  local binary_path="$1"
+  shift
+  local actual_archs
+  local actual_arch
+  local expected_arch
+  local found
+
+  if ! actual_archs="$(lipo -archs "$binary_path")"; then
+    echo "error: unable to read architectures from $binary_path" >&2
+    exit 1
+  fi
+
+  for expected_arch in "$@"; do
+    if [[ " $actual_archs " != *" $expected_arch "* ]]; then
+      echo "error: $binary_path is missing required architecture $expected_arch ($actual_archs)" >&2
+      exit 1
+    fi
+  done
+
+  for actual_arch in $actual_archs; do
+    found="false"
+    for expected_arch in "$@"; do
+      if [[ "$actual_arch" == "$expected_arch" ]]; then
+        found="true"
+        break
+      fi
+    done
+    if [[ "$found" != "true" ]]; then
+      echo "error: $binary_path contains unexpected architecture $actual_arch ($actual_archs)" >&2
+      exit 1
+    fi
+  done
+}
+
 validate_framework_sdk() {
   local framework_path="$1"
   local binary_path="$framework_path/$FRAMEWORK_NAME"
@@ -125,7 +160,6 @@ PLATFORMS=(
   "iOS-arm64-simulator:target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\""
   "iOS-x64-simulator:target_os=\"ios\" target_environment=\"simulator\" target_cpu=\"x64\" ios_deployment_target=\"13.0\""
   "macOS-arm64:target_os=\"mac\" target_cpu=\"arm64\" mac_deployment_target=\"10.15\""
-  "macOS-x64:target_os=\"mac\" target_cpu=\"x64\" mac_deployment_target=\"10.15\""
   "catalyst-arm64:target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"arm64\" ios_deployment_target=\"14.0\""
   "catalyst-x64:target_os=\"ios\" target_environment=\"catalyst\" target_cpu=\"x64\" ios_deployment_target=\"14.0\""
   "tvOS-arm64-device:target_os=\"ios\" target_environment=\"appletv\" target_cpu=\"arm64\" ios_deployment_target=\"17.0\""
@@ -157,17 +191,7 @@ for platform_config in "${PLATFORMS[@]}"; do
   end_group
 done
 
-start_group "Creating universal binaries (x64 + arm64)"
-
-mkdir -p "$OUT_DIR/macOS-lib"
-cp -R "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.framework" "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.framework"
-lipo -create -output "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.framework/$FRAMEWORK_NAME" "$OUT_DIR/macOS-arm64/$FRAMEWORK_NAME.framework/$FRAMEWORK_NAME" "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.framework/$FRAMEWORK_NAME"
-if [ -d "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.dSYM" ]; then
-  cp -R "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.dSYM" "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.dSYM"
-  lipo -create -output "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME" "$OUT_DIR/macOS-arm64/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME" "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME"
-fi
-
-validate_framework_sdk "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.framework"
+start_group "Creating combined Apple binaries"
 
 mkdir -p "$OUT_DIR/catalyst-lib"
 cp -R "$OUT_DIR/catalyst-arm64/$FRAMEWORK_NAME.framework" "$OUT_DIR/catalyst-lib/$FRAMEWORK_NAME.framework"
@@ -202,7 +226,7 @@ XCFRAMEWORK_ARGS=(-create-xcframework)
 FRAMEWORK_PATHS=(
   "$OUT_DIR/iOS-device-lib/$FRAMEWORK_NAME.framework"
   "$OUT_DIR/iOS-simulator-lib/$FRAMEWORK_NAME.framework"
-  "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.framework"
+  "$OUT_DIR/macOS-arm64/$FRAMEWORK_NAME.framework"
   "$OUT_DIR/catalyst-lib/$FRAMEWORK_NAME.framework"
   "$OUT_DIR/tvOS-arm64-device/$FRAMEWORK_NAME.framework"
   "$OUT_DIR/tvOS-arm64-simulator/$FRAMEWORK_NAME.framework"
@@ -213,7 +237,7 @@ FRAMEWORK_PATHS=(
 DSYM_PATHS=(
   "$OUT_DIR/iOS-device-lib/$FRAMEWORK_NAME.dSYM"
   "$OUT_DIR/iOS-simulator-lib/$FRAMEWORK_NAME.dSYM"
-  "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.dSYM"
+  "$OUT_DIR/macOS-arm64/$FRAMEWORK_NAME.dSYM"
   "$OUT_DIR/catalyst-lib/$FRAMEWORK_NAME.dSYM"
   "$OUT_DIR/tvOS-arm64-device/$FRAMEWORK_NAME.dSYM"
   "$OUT_DIR/tvOS-arm64-simulator/$FRAMEWORK_NAME.dSYM"
@@ -239,13 +263,38 @@ start_group "Post-processing XCFramework"
 
 cp LICENSE "$OUT_DIR/$FRAMEWORK_NAME.xcframework/"
 
-cd "$OUT_DIR/$FRAMEWORK_NAME.xcframework/macos-arm64_x86_64/$FRAMEWORK_NAME.framework/"
+cd "$OUT_DIR/$FRAMEWORK_NAME.xcframework/macos-arm64/$FRAMEWORK_NAME.framework/"
 mv "$FRAMEWORK_NAME" "Versions/A/$FRAMEWORK_NAME"
 ln -s "Versions/Current/$FRAMEWORK_NAME" "$FRAMEWORK_NAME"
 
 cd "$OUT_DIR/$FRAMEWORK_NAME.xcframework/ios-arm64_x86_64-maccatalyst/$FRAMEWORK_NAME.framework/"
 mv "$FRAMEWORK_NAME" "Versions/A/$FRAMEWORK_NAME"
 ln -s "Versions/Current/$FRAMEWORK_NAME" "$FRAMEWORK_NAME"
+
+XCFRAMEWORK_PATH="$OUT_DIR/$FRAMEWORK_NAME.xcframework"
+XCFRAMEWORK_SLICE_PATHS=(
+  "$XCFRAMEWORK_PATH/ios-arm64/$FRAMEWORK_NAME.framework"
+  "$XCFRAMEWORK_PATH/ios-arm64_x86_64-simulator/$FRAMEWORK_NAME.framework"
+  "$XCFRAMEWORK_PATH/macos-arm64/$FRAMEWORK_NAME.framework"
+  "$XCFRAMEWORK_PATH/ios-arm64_x86_64-maccatalyst/$FRAMEWORK_NAME.framework"
+  "$XCFRAMEWORK_PATH/tvos-arm64/$FRAMEWORK_NAME.framework"
+  "$XCFRAMEWORK_PATH/tvos-arm64-simulator/$FRAMEWORK_NAME.framework"
+  "$XCFRAMEWORK_PATH/xros-arm64/$FRAMEWORK_NAME.framework"
+  "$XCFRAMEWORK_PATH/xros-arm64-simulator/$FRAMEWORK_NAME.framework"
+)
+
+for framework_path in "${XCFRAMEWORK_SLICE_PATHS[@]}"; do
+  validate_framework_sdk "$framework_path"
+done
+
+require_exact_archs "${XCFRAMEWORK_SLICE_PATHS[0]}/$FRAMEWORK_NAME" arm64
+require_exact_archs "${XCFRAMEWORK_SLICE_PATHS[1]}/$FRAMEWORK_NAME" arm64 x86_64
+require_exact_archs "${XCFRAMEWORK_SLICE_PATHS[2]}/$FRAMEWORK_NAME" arm64
+require_exact_archs "${XCFRAMEWORK_SLICE_PATHS[3]}/$FRAMEWORK_NAME" arm64 x86_64
+require_exact_archs "${XCFRAMEWORK_SLICE_PATHS[4]}/$FRAMEWORK_NAME" arm64
+require_exact_archs "${XCFRAMEWORK_SLICE_PATHS[5]}/$FRAMEWORK_NAME" arm64
+require_exact_archs "${XCFRAMEWORK_SLICE_PATHS[6]}/$FRAMEWORK_NAME" arm64
+require_exact_archs "${XCFRAMEWORK_SLICE_PATHS[7]}/$FRAMEWORK_NAME" arm64
 
 cd "$OUT_DIR"
 zip --symlinks -9 -r "$FRAMEWORK_NAME.xcframework.zip" "$FRAMEWORK_NAME.xcframework"

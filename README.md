@@ -16,6 +16,11 @@ The `build` workflow intentionally produces only the
 runs the focused native audio regression gates before upload. Packaging also
 verifies the final macOS binary's required Objective-C exports so a
 header-only framework cannot be published accidentally.
+The macOS member is intentionally `arm64`-only, matching Inline's release,
+bundle-thinning, post-check, and Sparkle hardware policy. Intel simulator and
+Mac Catalyst members remain available for development; they do not imply Intel
+support for the shipped macOS app. The packager rejects missing or unexpected
+architectures in every final XCFramework member.
 Every Apple slice must additionally export Grid's mixer key and effective
 software/platform processing-state objects, and declare the callback, delay,
 and configured graph-format runtime diagnostics. This lets the app reject a
