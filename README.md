@@ -13,4 +13,6 @@ LiveKitWebRTC `144.7559.11`, plus Inline's macOS AudioEngine split-route
 hardening, callback-quiescent APM resets, and recoverable route transactions.
 The `build` workflow intentionally produces only the
 `LiveKitWebRTC.xcframework.zip` artifact needed by Inline's Swift package and
-runs the focused native audio regression gates before upload.
+runs the focused native audio regression gates before upload. Packaging also
+verifies the final macOS binary's required Objective-C exports so a
+header-only framework cannot be published accidentally.

@@ -41,6 +41,16 @@ end_group() {
   fi
 }
 
+require_exported_symbol() {
+  local binary_path="$1"
+  local symbol="$2"
+
+  if ! nm -gU "$binary_path" | grep -Fq "$symbol"; then
+    echo "error: $binary_path does not export required symbol $symbol" >&2
+    exit 1
+  fi
+}
+
 COMMON_ARGS="
       enable_dsyms = $DEBUG
       enable_libaom = true
@@ -108,6 +118,12 @@ if [ -d "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.dSYM" ]; then
   cp -R "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.dSYM" "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.dSYM"
   lipo -create -output "$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME" "$OUT_DIR/macOS-arm64/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME" "$OUT_DIR/macOS-x64/$FRAMEWORK_NAME.dSYM/Contents/Resources/DWARF/$FRAMEWORK_NAME"
 fi
+
+SYMBOL_PREFIX="${PREFIX}RTC"
+MACOS_FRAMEWORK_BINARY="$OUT_DIR/macOS-lib/$FRAMEWORK_NAME.framework/$FRAMEWORK_NAME"
+require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_${SYMBOL_PREFIX}InitializeSSL"
+require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}AudioDeviceModule"
+require_exported_symbol "$MACOS_FRAMEWORK_BINARY" "_OBJC_CLASS_\$_${SYMBOL_PREFIX}AudioSource"
 
 mkdir -p "$OUT_DIR/catalyst-lib"
 cp -R "$OUT_DIR/catalyst-arm64/$FRAMEWORK_NAME.framework" "$OUT_DIR/catalyst-lib/$FRAMEWORK_NAME.framework"
