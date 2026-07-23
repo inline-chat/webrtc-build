@@ -15,6 +15,9 @@ on:
         options:
           - release
           - debug
+  push:
+    tags:
+      - 'build-webrtc-*'
 permissions:
   contents: read
   actions: read
@@ -36,7 +39,27 @@ jobs:
       run: sudo xcode-select --switch /Applications/Xcode_26.0.app/Contents/Developer
     - name: Build
       id: build
-      run: ./build.${{ matrix.name }}.sh "${{ github.event.inputs.commitHash }}" "${{ github.event.inputs.configuration || 'release' }}"
+      env:
+        REQUESTED_COMMIT: ${{ github.event.inputs.commitHash }}
+        REQUESTED_CONFIGURATION: ${{ github.event.inputs.configuration }}
+      run: |
+        commit_hash="$REQUESTED_COMMIT"
+        configuration="$REQUESTED_CONFIGURATION"
+        if [[ -z "$commit_hash" ]]; then
+          commit_hash="$(sed -n 's/^WEBRTC_COMMIT=//p' VERSION)"
+        fi
+        if [[ -z "$configuration" ]]; then
+          configuration="release"
+        fi
+        if [[ ! "$commit_hash" =~ ^[0-9a-f]{40}$ ]]; then
+          echo "WEBRTC commit must be an exact 40-character lowercase SHA" >&2
+          exit 64
+        fi
+        if [[ "$configuration" != "release" && "$configuration" != "debug" ]]; then
+          echo "configuration must be release or debug" >&2
+          exit 64
+        fi
+        ./build.${{ matrix.name }}.sh "$commit_hash" "$configuration"
     - name: Test native audio hardening
       run: |
         export PATH="$PWD/_source/apple_prefixed/depot_tools:$PATH"
