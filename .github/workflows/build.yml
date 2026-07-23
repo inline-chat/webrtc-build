@@ -60,8 +60,9 @@ jobs:
           use_lld=false
           use_rtti=true
           use_siso=false'
-        ninja -C "$out_dir" modules_unittests -j 6 --quiet
+        ninja -C "$out_dir" modules_unittests audio_transport_impl_unittests -j 6 --quiet
         "$out_dir/modules_unittests" --gtest_filter=FineBufferTest.*
+        "$out_dir/audio_transport_impl_unittests" --gtest_filter=AudioTransportImplTest.*
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
