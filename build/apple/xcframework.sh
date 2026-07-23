@@ -3,7 +3,7 @@
 set -e
 
 if [[ -z "$1" ]]; then
-  echo "Usage: $0 'debug' | 'release' 'source_dir' 'out_dir' ['prefix']"
+  echo "Usage: $0 'debug' | 'release' 'source_dir' 'out_dir' ['framework_prefix'] ['symbol_prefix']"
   exit 0
 fi
 
@@ -11,13 +11,15 @@ MODE="$1"
 SOURCE_DIR="$(realpath "$2")"
 OUT_DIR="$(realpath "$3")"
 PREFIX="${4:-""}"
+SYMBOL_PREFIX="${5:-""}"
 
 if [ -z "$PREFIX" ]; then
   FRAMEWORK_NAME="WebRTC"
+  SYMBOL_PREFIX="${SYMBOL_PREFIX:-RTC}"
 else
   FRAMEWORK_NAME="${PREFIX}WebRTC"
+  SYMBOL_PREFIX="${SYMBOL_PREFIX:-${PREFIX}RTC}"
 fi
-SYMBOL_PREFIX="${PREFIX}RTC"
 
 DEBUG="false"
 if [[ "$MODE" == "debug" ]]; then
@@ -26,7 +28,7 @@ fi
 
 PARALLEL_BUILDS=6
 
-echo "xcframework.sh: MODE=$MODE, DEBUG=$DEBUG, SOURCE_DIR=$SOURCE_DIR, OUT_DIR=$OUT_DIR, PREFIX=$PREFIX, FRAMEWORK_NAME=$FRAMEWORK_NAME"
+echo "xcframework.sh: MODE=$MODE, DEBUG=$DEBUG, SOURCE_DIR=$SOURCE_DIR, OUT_DIR=$OUT_DIR, PREFIX=$PREFIX, FRAMEWORK_NAME=$FRAMEWORK_NAME, SYMBOL_PREFIX=$SYMBOL_PREFIX"
 
 start_group() {
   if [[ "$CI" == "true" ]]; then
