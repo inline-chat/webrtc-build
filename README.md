@@ -17,6 +17,8 @@ runs the focused native audio regression gates before upload. Packaging also
 verifies the final macOS binary's required Objective-C exports so a
 header-only framework cannot be published accidentally.
 Every Apple slice must additionally export Grid's mixer key and effective
-software/platform processing-state objects, and declare the callback/delay
-runtime diagnostics. A generic WebRTC framework that links but omits those
-hardened audio APIs is not a valid Inline artifact.
+software/platform processing-state objects, and declare the callback, delay,
+and configured graph-format runtime diagnostics. This lets the app reject a
+fresh callback stream whose WebRTC graph still targets a stale physical sample
+rate after a route change. A generic WebRTC framework that links but omits
+those hardened audio APIs is not a valid Inline artifact.

@@ -80,6 +80,18 @@ validate_framework_sdk() {
     "$headers_path/RTCAudioDeviceModule.h" \
     "audioEngineRuntimeDiagnostics"
   require_header_text \
+    "$headers_path/RTCAudioDeviceModule.h" \
+    "configuredPlayoutSampleRate"
+  require_header_text \
+    "$headers_path/RTCAudioDeviceModule.h" \
+    "configuredRecordingSampleRate"
+  require_header_text \
+    "$headers_path/RTCAudioDeviceModule.h" \
+    "configuredPlayoutChannels"
+  require_header_text \
+    "$headers_path/RTCAudioDeviceModule.h" \
+    "configuredRecordingChannels"
+  require_header_text \
     "$headers_path/RTCAudioProcessingState.h" \
     "RTCAudioProcessingState"
 }
