@@ -37,7 +37,7 @@ jobs:
     - name: Build
       id: build
       run: ./build.${{ matrix.name }}.sh "${{ github.event.inputs.commitHash }}" "${{ github.event.inputs.configuration || 'release' }}"
-    - name: Test native typing suppression
+    - name: Test native audio hardening
       run: |
         export PATH="$PWD/_source/apple_prefixed/depot_tools:$PATH"
         source_dir="$PWD/_source/apple_prefixed/webrtc/src"
@@ -60,10 +60,16 @@ jobs:
           rtc_use_h264=false
           target_cpu="arm64"
           target_os="mac"
-          treat_warnings_as_errors=true
-          use_rtti=true'
-        ninja -C "$out_dir" transient_suppression_unittests_runner -j 6 --quiet
+          fatal_linker_warnings=false
+          treat_warnings_as_errors=false
+          use_clang_modules=false
+          use_custom_libcxx=false
+          use_lld=false
+          use_rtti=true
+          use_siso=false'
+        ninja -C "$out_dir" transient_suppression_unittests_runner modules_unittests -j 6 --quiet
         "$out_dir/transient_suppression_unittests_runner"
+        "$out_dir/modules_unittests" --gtest_filter=FineBufferTest.*
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:

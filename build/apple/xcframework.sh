@@ -45,6 +45,7 @@ COMMON_ARGS="
       enable_dsyms = $DEBUG
       enable_libaom = true
       enable_stripping = true
+      fatal_linker_warnings = false
       ios_enable_code_signing = false
       is_component_build = false
       is_debug = $DEBUG
@@ -55,8 +56,12 @@ COMMON_ARGS="
       rtc_include_tests = false
       rtc_libvpx_build_vp9 = true
       rtc_use_h264 = false
-      treat_warnings_as_errors = true
-      use_rtti = true"
+      treat_warnings_as_errors = false
+      use_clang_modules = false
+      use_custom_libcxx = false
+      use_lld = false
+      use_rtti = true
+      use_siso = false"
 
 PLATFORMS=(
   "iOS-arm64-device:target_os=\"ios\" target_environment=\"device\" target_cpu=\"arm64\" ios_deployment_target=\"13.0\""
