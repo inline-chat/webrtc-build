@@ -16,3 +16,7 @@ The `build` workflow intentionally produces only the
 runs the focused native audio regression gates before upload. Packaging also
 verifies the final macOS binary's required Objective-C exports so a
 header-only framework cannot be published accidentally.
+The gate additionally requires Grid's mixer key, effective software and
+platform processing-state objects, and callback/delay runtime diagnostics. A
+generic WebRTC framework that links but omits those hardened audio APIs is not
+a valid Inline artifact.
